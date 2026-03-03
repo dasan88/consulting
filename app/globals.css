@@ -2248,10 +2248,9 @@ th {
 
   .print-sheet {
     box-sizing: border-box;
-    height: 195.8mm;
-    overflow: hidden;
+    min-height: 190mm;
     margin: 0 !important;
-    padding: 3mm;
+    padding: 3.2mm;
     border: 0.6px solid #cfd9e8;
     border-radius: 2mm;
     background: #fff;
@@ -2264,118 +2263,128 @@ th {
     page-break-after: auto;
   }
 
-  .print-sheet-summary .print-grid-2 {
-    gap: 1.5mm;
-  }
-
-  .print-sheet-summary .print-card {
-    padding: 1.45mm;
-  }
-
-  .print-sheet-summary .print-card h3 {
-    margin-bottom: 1mm;
-    font-size: 10.4px;
-  }
-
-  .print-sheet-summary .print-table {
-    font-size: 8.6px;
-    line-height: 1.18;
-  }
-
-  .print-sheet-summary .print-table th,
-  .print-sheet-summary .print-table td {
-    padding: 0.65mm 0.9mm;
+  .print-sheet-head,
+  .print-kpi-grid {
+    margin-bottom: 1.4mm;
   }
 
   .print-sheet-head {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    margin-bottom: 2mm;
+    margin-bottom: 0;
     border-bottom: 0.7px solid #ced9ea;
     padding-bottom: 1.2mm;
   }
 
   .print-sheet-head h2 {
     margin: 0;
-    font-size: 14.5px;
+    font-size: 14px;
     font-weight: 900;
     color: #1d3f70;
   }
 
   .print-sheet-head p {
     margin: 0;
-    font-size: 9.4px;
+    font-size: 9px;
     color: #4a6283;
   }
 
   .print-kpi-grid {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 1.6mm;
-    margin-bottom: 2mm;
+    gap: 1.5mm;
   }
 
   .print-kpi {
     border: 0.7px solid #d6e0ef;
     border-radius: 1.5mm;
     background: #f6f9ff;
-    padding: 1.4mm 1.6mm;
+    padding: 1.25mm 1.5mm;
   }
 
   .print-kpi span {
     display: block;
-    font-size: 8.5px;
+    font-size: 8.4px;
     color: #4d6585;
   }
 
   .print-kpi strong {
     display: block;
-    margin-top: 0.6mm;
-    font-size: 13.6px;
+    margin-top: 0.5mm;
+    font-size: 13.2px;
     color: #163c6d;
     line-height: 1.1;
   }
 
   .print-grid-2 {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1.8mm;
+    display: flex;
+    gap: 1.5mm;
+    align-items: stretch;
   }
 
   .print-grid-3 {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1.8mm;
+    display: flex;
+    gap: 1.5mm;
+    align-items: stretch;
+  }
+
+  .print-grid-2 > .print-card {
+    width: calc(50% - 0.75mm);
+    flex: 1 1 0;
+  }
+
+  .print-grid-3 > .print-card {
+    width: calc(33.333% - 1mm);
+    flex: 1 1 0;
+  }
+
+  .print-sheet-1 .print-grid-2 > .print-card {
+    min-height: 148mm;
   }
 
   .print-card {
     border: 0.7px solid #d6e1f0;
     border-radius: 1.6mm;
     background: #fff;
-    padding: 1.6mm;
+    padding: 1.4mm;
+    display: flex;
+    flex-direction: column;
+    min-height: 1px;
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
   .print-card h3 {
-    margin: 0 0 1.2mm;
-    font-size: 10.8px;
+    margin: 0 0 1mm;
+    font-size: 10.5px;
     color: #234a7d;
+  }
+
+  .print-subhead {
+    margin: 1.25mm 0 0.95mm !important;
+    padding-top: 0.85mm;
+    border-top: 0.6px solid #dee6f3;
+    font-size: 10.25px;
+    color: #234a7d;
+  }
+
+  .print-mt {
+    margin-top: 1.25mm !important;
   }
 
   .print-table {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
-    font-size: 8.9px;
-    line-height: 1.22;
+    font-size: 8.8px;
+    line-height: 1.2;
   }
 
   .print-table th,
   .print-table td {
     border: 0.6px solid #dce4f2;
-    padding: 0.75mm 1mm;
+    padding: 0.68mm 0.92mm;
     text-align: left;
     vertical-align: top;
     word-break: break-word;

@@ -1576,7 +1576,7 @@ export default function AnalysisPage() {
       </section>
 
       <div className="only-print print-report">
-        <section className="print-sheet print-sheet-summary">
+        <section className="print-sheet print-sheet-1">
           <div className="print-sheet-head">
             <h2>상담 분석 리포트 (1/3) - 요약/채널</h2>
             <p>데이터 기간: {dateRangeLabel(filteredRecords)}</p>
@@ -1602,6 +1602,17 @@ export default function AnalysisPage() {
                   ))}
                 </tbody>
               </table>
+              <h3 className="print-subhead">방문경로 분포</h3>
+              <table className="print-table">
+                <thead><tr><th>방문경로</th><th>건수</th><th>비중</th></tr></thead>
+                <tbody>
+                  {data.sourceCounts.slice(0, 5).map((row) => (
+                    <tr key={`print-source-${row.source}`}>
+                      <td>{row.source}</td><td>{row.value}</td><td>{toPercent(row.value, data.total)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </article>
             <article className="print-card">
               <h3>최근 변화 요약</h3>
@@ -1614,13 +1625,13 @@ export default function AnalysisPage() {
                   <tr><td>이공계 비율</td><td>{currentSnapshot.stemRate}%</td><td>{deltaBadgeText(changeSignals.stemDelta, "%p")}</td></tr>
                 </tbody>
               </table>
-              <h3 style={{ marginTop: 8 }}>방문경로 분포</h3>
+              <h3 className="print-subhead">3항목 교차 TOP 조합</h3>
               <table className="print-table">
-                <thead><tr><th>방문경로</th><th>건수</th><th>비중</th></tr></thead>
+                <thead><tr><th>방문경로</th><th>연령대</th><th>준비기간</th><th>건수</th><th>비율</th></tr></thead>
                 <tbody>
-                  {data.sourceCounts.slice(0, 5).map((row) => (
-                    <tr key={`print-source-${row.source}`}>
-                      <td>{row.source}</td><td>{row.value}</td><td>{toPercent(row.value, data.total)}%</td>
+                  {advanced.overlapTop.slice(0, 5).map((row) => (
+                    <tr key={`print-overlap-page1-${row.source}-${row.age}-${row.prep}`}>
+                      <td>{row.source}</td><td>{row.age}</td><td>{row.prep}</td><td>{row.count}</td><td>{row.share}%</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1629,7 +1640,7 @@ export default function AnalysisPage() {
           </div>
         </section>
 
-        <section className="print-sheet">
+        <section className="print-sheet print-sheet-2">
           <div className="print-sheet-head">
             <h2>상담 분석 리포트 (2/3) - 페르소나/학력</h2>
             <p>인구통계 및 대학/전공 구조</p>
@@ -1647,7 +1658,7 @@ export default function AnalysisPage() {
                   ))}
                 </tbody>
               </table>
-              <table className="print-table" style={{ marginTop: 8 }}>
+              <table className="print-table print-mt">
                 <thead><tr><th>성별</th><th>건수</th><th>영어 보유율</th></tr></thead>
                 <tbody>
                   {data.genderEnglish.map((row) => (
@@ -1657,7 +1668,7 @@ export default function AnalysisPage() {
                   ))}
                 </tbody>
               </table>
-              <h3 style={{ marginTop: 8 }}>성별 × 연령대 TOP</h3>
+              <h3 className="print-subhead">성별 × 연령대 TOP</h3>
               <table className="print-table">
                 <thead><tr><th>조합</th><th>건수</th><th>전체비중</th></tr></thead>
                 <tbody>
@@ -1681,7 +1692,7 @@ export default function AnalysisPage() {
                   ))}
                 </tbody>
               </table>
-              <table className="print-table" style={{ marginTop: 8 }}>
+              <table className="print-table print-mt">
                 <thead><tr><th>전공계열</th><th>건수</th><th>비중</th></tr></thead>
                 <tbody>
                   {data.majorFamilyRows.map((row) => (
@@ -1691,7 +1702,7 @@ export default function AnalysisPage() {
                   ))}
                 </tbody>
               </table>
-              <table className="print-table" style={{ marginTop: 8 }}>
+              <table className="print-table print-mt">
                 <thead><tr><th>학년/구분</th><th>건수</th><th>비중</th></tr></thead>
                 <tbody>
                   {data.gradeRows.map((row) => (
@@ -1705,7 +1716,7 @@ export default function AnalysisPage() {
           </div>
         </section>
 
-        <section className="print-sheet">
+        <section className="print-sheet print-sheet-3">
           <div className="print-sheet-head">
             <h2>상담 분석 리포트 (3/3) - 운영/관심사/후보군</h2>
             <p>운영 효율, 상담 관심사, 최상위 후보군</p>
@@ -1723,7 +1734,7 @@ export default function AnalysisPage() {
                   ))}
                 </tbody>
               </table>
-              <h3 style={{ marginTop: 8 }}>상담시간 분포</h3>
+              <h3 className="print-subhead">상담시간 분포</h3>
               <table className="print-table">
                 <thead><tr><th>상담시간</th><th>건수</th></tr></thead>
                 <tbody>
@@ -1747,7 +1758,7 @@ export default function AnalysisPage() {
                   ))}
                 </tbody>
               </table>
-              <table className="print-table" style={{ marginTop: 8 }}>
+              <table className="print-table print-mt">
                 <thead><tr><th>상담 관심사</th><th>건수</th></tr></thead>
                 <tbody>
                   {data.questionCategoryRows.slice(0, 5).map((row) => (
@@ -1768,7 +1779,7 @@ export default function AnalysisPage() {
                   <tr><td>연락처 유효율</td><td>{toPercent(data.validPhoneCount, data.total)}%</td></tr>
                 </tbody>
               </table>
-              <h3 style={{ marginTop: 8 }}>후보군 유입원 TOP</h3>
+              <h3 className="print-subhead">후보군 유입원 TOP</h3>
               <table className="print-table">
                 <thead><tr><th>유입원</th><th>후보군 건수</th><th>후보군 비율</th></tr></thead>
                 <tbody>
@@ -1781,7 +1792,7 @@ export default function AnalysisPage() {
               </table>
             </article>
           </div>
-          <article className="print-card" style={{ marginTop: 8 }}>
+          <article className="print-card print-mt">
             <h3>3항목 교차 TOP 조합</h3>
             <table className="print-table">
               <thead><tr><th>방문경로</th><th>연령대</th><th>준비가능기간</th><th>건수</th><th>비율</th></tr></thead>
