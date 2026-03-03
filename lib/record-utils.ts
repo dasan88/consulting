@@ -18,7 +18,6 @@ export function toDisplayPhone(input: string): string {
 export function requiredCheck(data: CounselingInput): string | null {
   if (!data.date) return "날짜는 필수입니다.";
   if (!data.name.trim()) return "이름은 필수입니다.";
-  if (!data.academy_id.trim()) return "학원 아이디는 필수입니다.";
   if (!normalizePhone(data.phone)) return "연락처는 필수입니다.";
   if (!["홈페이지", "인스타그램", "블로그", "유튜브", "지인추천", "기타"].includes(data.visit_source)) {
     return "방문경로 값이 올바르지 않습니다.";

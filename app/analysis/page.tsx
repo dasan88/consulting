@@ -165,8 +165,29 @@ function ageMidpoint(ageGroup: CounselingInput["age_group"]): number {
 function majorFamily(major: string): MajorFamily {
   const v = major.trim();
   if (!v || v === "기타") return "기타";
-  if (["전자/전기", "기계", "건축"].includes(v) || /(공학|전기|전자|기계|건축)/.test(v)) return "공대";
-  if (["화학", "바이오"].includes(v) || /(화학|생명|바이오|자연)/.test(v)) return "자연대";
+  if (
+    [
+      "전자/전기",
+      "기계",
+      "건축",
+      "컴퓨터/소프트웨어",
+      "데이터/AI",
+      "산업공학",
+      "토목/환경",
+      "신소재/재료",
+      "반도체",
+      "항공/조선",
+    ].includes(v) ||
+    /(공학|전기|전자|기계|건축|토목|건설|산업|재료|신소재|금속|자동차|로봇|항공|우주|선박|조선|반도체|에너지|화공|컴퓨터|소프트웨어|데이터|ai|인공지능|ict|정보통신|통신|네트워크|전산|시스템)/i.test(v)
+  ) {
+    return "공대";
+  }
+  if (
+    ["화학", "바이오", "수학/통계", "물리", "지구/환경과학"].includes(v) ||
+    /(화학|생명|바이오|자연|물리|수학|통계|지구|천문|환경과학)/.test(v)
+  ) {
+    return "자연대";
+  }
   if (["문과"].includes(v) || /(문과|인문|사회|상경|경영|법)/.test(v)) return "비이공계";
   return "기타";
 }
@@ -933,7 +954,7 @@ export default function AnalysisPage() {
                 <strong className="summary-hero-value">{data.total}</strong>
               </div>
               <div className="summary-hero-stat summary-hero-stat-candidate">
-                <span className="summary-hero-label">이상적 합격 후보군 비율</span>
+                <span className="summary-hero-label">최상위 합격 후보군 비율</span>
                 <strong className="summary-hero-value">{idealCandidateRate}%</strong>
                 <p className="summary-hero-mini">{data.idealCandidates.length}건</p>
               </div>
@@ -1143,7 +1164,7 @@ export default function AnalysisPage() {
           </article>
 
           <article className="chart-card">
-            <h3>이상적 후보 유입 경로</h3>
+            <h3>최상위 후보 유입 경로</h3>
             <div className="bar-list">
               {advanced.idealBySource.map((row) => {
                 const isTop = isTopMetric(row.idealCount, maxIdealBySource);
@@ -1545,7 +1566,7 @@ export default function AnalysisPage() {
       </section>
 
       <section className="analysis-section aligned-section">
-        <h2>11) 이상적 합격 후보군</h2>
+        <h2>11) 최상위 합격 후보군</h2>
         <div className="grid">
           <div className="mini-block">
             <h4>후보군 정의</h4>
@@ -1555,7 +1576,7 @@ export default function AnalysisPage() {
       </section>
 
       <div className="only-print print-report">
-        <section className="print-sheet">
+        <section className="print-sheet print-sheet-summary">
           <div className="print-sheet-head">
             <h2>상담 분석 리포트 (1/3) - 요약/채널</h2>
             <p>데이터 기간: {dateRangeLabel(filteredRecords)}</p>
@@ -1687,7 +1708,7 @@ export default function AnalysisPage() {
         <section className="print-sheet">
           <div className="print-sheet-head">
             <h2>상담 분석 리포트 (3/3) - 운영/관심사/후보군</h2>
-            <p>운영 효율, 상담 관심사, 이상적 후보군</p>
+            <p>운영 효율, 상담 관심사, 최상위 후보군</p>
           </div>
           <div className="print-grid-3">
             <article className="print-card">
@@ -1738,7 +1759,7 @@ export default function AnalysisPage() {
               </table>
             </article>
             <article className="print-card">
-              <h3>이상적 후보군</h3>
+              <h3>최상위 후보군</h3>
               <table className="print-table">
                 <tbody>
                   <tr><td>기준</td><td>{IDEAL_CANDIDATE_RULE}</td></tr>

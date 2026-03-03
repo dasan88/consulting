@@ -12,7 +12,25 @@ const GENDER_OPTIONS: CounselingInput["gender"][] = ["남", "여"];
 const AGE_OPTIONS: CounselingInput["age_group"][] = ["20~24", "25~29", "30~34", "35~39", "40~45"];
 const STATUS_OPTIONS: CounselingInput["status"][] = ["대학", "졸업", "직장", "기타"];
 const VISIT_SOURCE_OPTIONS: CounselingInput["visit_source"][] = ["홈페이지", "인스타그램", "블로그", "유튜브", "지인추천", "기타"];
-const MAJOR_OPTIONS = ["전자/전기", "화학", "바이오", "기계", "건축", "문과", "기타"] as const;
+const MAJOR_OPTIONS = [
+  "전자/전기",
+  "기계",
+  "건축",
+  "컴퓨터/소프트웨어",
+  "데이터/AI",
+  "산업공학",
+  "토목/환경",
+  "신소재/재료",
+  "반도체",
+  "항공/조선",
+  "화학",
+  "바이오",
+  "수학/통계",
+  "물리",
+  "지구/환경과학",
+  "문과",
+  "기타",
+] as const;
 const GRADE_OPTIONS = ["1학년", "2학년", "3학년", "4학년"] as const;
 const ENGLISH_OPTIONS = ["TOEIC", "TOEFL", "TEPS", "G-TELP", "FLEX", "IELTS"] as const;
 const PREP_PERIOD_OPTIONS = ["12개월", "18개월", "24개월", "30개월", "36개월"] as const;
@@ -28,8 +46,8 @@ const QUESTION_DELIMITER = " | ";
 const COUNSEL_MINUTE_PRESETS = [30, 40, 50, 60];
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 const SAMPLE_NAMES = ["김민수", "이서연", "박지훈", "최유진", "정하늘", "오지수", "한도윤", "윤가은"];
-const SAMPLE_UNIVERSITIES = ["서울대", "연세대", "고려대", "한양대", "성균관대", "중앙대", "경희대", ""];
-const SAMPLE_MAJORS = [...MAJOR_OPTIONS, ""];
+const SAMPLE_UNIVERSITIES = ["서울대", "연세대", "고려대", "한양대", "성균관대", "중앙대", "경희대"];
+const SAMPLE_MAJORS = [...MAJOR_OPTIONS];
 const SAMPLE_QUESTIONS = [...QUESTION_OPTIONS];
 const SAMPLE_PREP = [...PREP_PERIOD_OPTIONS];
 const DRAFT_STORAGE_KEY = "counseling-form-draft-v1";
@@ -80,6 +98,12 @@ function weightedPick<T>(items: Array<{ value: T; weight: number }>): T {
     if (point <= 0) return item.value;
   }
   return items[items.length - 1].value;
+}
+
+function pickMultipleUnique<T>(array: readonly T[], minCount: number, maxCount: number): T[] {
+  const count = minCount + Math.floor(Math.random() * (maxCount - minCount + 1));
+  const shuffled = [...array].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(count, shuffled.length));
 }
 
 function parseQuestionSelections(value: string): string[] {
@@ -162,7 +186,6 @@ export default function IntakePage() {
     const requiredValues = [
       form.date,
       form.name.trim(),
-      form.academy_id.trim(),
       form.phone.trim(),
       form.visit_source,
       form.gender,
@@ -403,17 +426,20 @@ export default function IntakePage() {
   }
 
   function addSampleRecords() {
-    const today = new Date();
-    const samples: CounselingRecord[] = Array.from({ length: 100 }, (_, idx) => {
-      const dayOffset = Math.floor(Math.random() * 183);
-      const date = new Date(today);
-      date.setDate(today.getDate() - dayOffset);
+    const sampleStart = new Date(2025, 6, 1);
+    const sampleEnd = new Date(2026, 2, 31);
+    const spanDays = Math.floor((sampleEnd.getTime() - sampleStart.getTime()) / (24 * 60 * 60 * 1000));
+    const samples: CounselingRecord[] = Array.from({ length: 200 }, (_, idx) => {
+      const dayOffset = Math.floor(Math.random() * (spanDays + 1));
+      const date = new Date(sampleStart);
+      date.setDate(sampleStart.getDate() + dayOffset);
       const gender = pick(GENDER_OPTIONS);
       const age = weightedPick(AGE_WEIGHT_MAP);
       const status = weightedPick(STATUS_WEIGHT_MAP);
       const minutes = weightedPick(MINUTES_WEIGHT_MAP);
       const phoneMid = String(1000 + (idx * 37) % 9000);
       const phoneLast = String(1000 + (idx * 91) % 9000);
+      const selectedQuestions = pickMultipleUnique(SAMPLE_QUESTIONS, 1, 3);
       return {
         id: crypto.randomUUID(),
         created_at: new Date().toISOString(),
@@ -426,14 +452,14 @@ export default function IntakePage() {
         age_group: age,
         address: weightedPick(ADDRESS_WEIGHT_MAP),
         status,
-        university: status === "대학" || Math.random() > 0.4 ? pick(SAMPLE_UNIVERSITIES) : "",
-        major: Math.random() > 0.3 ? pick(SAMPLE_MAJORS) : "",
-        grade: status === "대학" ? String(1 + (idx % 4)) : "",
-        english_level: Math.random() > 0.15 ? pick([...ENGLISH_OPTIONS]) : "",
-        questions: pick(SAMPLE_QUESTIONS),
+        university: pick(SAMPLE_UNIVERSITIES),
+        major: pick(SAMPLE_MAJORS),
+        grade: pick([...GRADE_OPTIONS]),
+        english_level: pick([...ENGLISH_OPTIONS]),
+        questions: serializeQuestionSelections(selectedQuestions),
         prep_period: pick(SAMPLE_PREP),
         counsel_minutes: minutes,
-        note: `테스트 데이터 ${idx + 1}`,
+        note: `테스트 데이터 ${idx + 1} (25년 3분기~26년 1분기)`,
       };
     });
     setRecords((prev) => [...samples, ...prev]);
@@ -562,7 +588,7 @@ export default function IntakePage() {
         </div>
         <div className="intake-summary-card">
           <span>현재 필수 입력</span>
-          <strong>{requiredFilled}/9</strong>
+          <strong>{requiredFilled}/8</strong>
         </div>
         <div className="intake-summary-card">
           <span>관심사 선택</span>
@@ -571,15 +597,6 @@ export default function IntakePage() {
       </div>
 
       <section id="form-section">
-        <div className="form-header">
-          <div>
-            <h2>상담 입력</h2>
-            <p className="subtle">필수 항목을 먼저 입력한 뒤 상세 내용을 추가하세요.</p>
-            <p className="shortcut-hint">단축키: Ctrl/Cmd + S 저장</p>
-            <p className="shortcut-hint">임시저장: {draftSavedAt || "-"}</p>
-          </div>
-          <div className="progress-pill">필수 입력 {requiredFilled}/9</div>
-        </div>
         <form ref={formRef} onSubmit={onSubmit} className="grid">
           <div className="form-block form-basic">
             <h3>기본 정보</h3>
@@ -658,10 +675,9 @@ export default function IntakePage() {
                 />
               </div>
               <div>
-                <label htmlFor="academy_id">학원 아이디*</label>
+                <label htmlFor="academy_id">학원 아이디</label>
                 <input
                   id="academy_id"
-                  className={showValidation && !form.academy_id.trim() ? "invalid-field" : ""}
                   value={form.academy_id}
                   onChange={(e) => updateForm("academy_id", e.target.value)}
                 />
@@ -872,7 +888,7 @@ export default function IntakePage() {
           <button type="button" className="secondary" onClick={downloadTemplate}>템플릿 다운로드</button>
           <button type="button" className="secondary" onClick={exportExcel}>현재 데이터 다운로드</button>
           <button type="button" className="secondary" onClick={exportFilteredExcel}>조회결과 다운로드</button>
-          <button type="button" className="secondary" onClick={addSampleRecords}>샘플 100건 생성</button>
+          <button type="button" className="secondary" onClick={addSampleRecords}>샘플 200건 생성</button>
           <label style={{ width: "auto" }}>
             <input type="file" accept=".xlsx,.xls" onChange={handleUpload} />
           </label>

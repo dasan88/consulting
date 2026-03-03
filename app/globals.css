@@ -2250,6 +2250,7 @@ th {
     box-sizing: border-box;
     height: 195.8mm;
     overflow: hidden;
+    margin: 0 !important;
     padding: 3mm;
     border: 0.6px solid #cfd9e8;
     border-radius: 2mm;
@@ -2261,6 +2262,29 @@ th {
   .print-sheet:last-child {
     break-after: auto;
     page-break-after: auto;
+  }
+
+  .print-sheet-summary .print-grid-2 {
+    gap: 1.5mm;
+  }
+
+  .print-sheet-summary .print-card {
+    padding: 1.45mm;
+  }
+
+  .print-sheet-summary .print-card h3 {
+    margin-bottom: 1mm;
+    font-size: 10.4px;
+  }
+
+  .print-sheet-summary .print-table {
+    font-size: 8.6px;
+    line-height: 1.18;
+  }
+
+  .print-sheet-summary .print-table th,
+  .print-sheet-summary .print-table td {
+    padding: 0.65mm 0.9mm;
   }
 
   .print-sheet-head {
