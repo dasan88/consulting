@@ -34,6 +34,8 @@
 
 ## 실행 방법
 
+### macOS
+
 ```bash
 npm install
 npm run dev
@@ -41,7 +43,33 @@ npm run dev
 
 브라우저에서 `http://localhost:3000` 접속.
 
+### Windows
+
+1. `Node.js LTS` 설치
+2. 저장소 다운로드 또는 `git clone`
+3. 프로젝트 폴더에서 아래 중 하나 실행
+
+```bat
+run_windows.bat
+```
+
+또는 직접 실행:
+
+```bat
+npm install
+npm run dev
+```
+
+서버가 꼬였을 때는 아래 파일로 재실행할 수 있습니다.
+
+```bat
+restart.bat
+```
+
+상세한 윈도우 설치 절차는 [WINDOWS_SETUP.md](/Users/min/Desktop/consulting/WINDOWS_SETUP.md) 참고.
+
 ## 참고
 
 - 저장소는 브라우저 `localStorage`를 사용합니다.
+- 맥에서 저장한 데이터는 윈도우 브라우저로 자동 이동되지 않습니다.
 - 서버 DB(Supabase/PostgreSQL) 연결 버전으로 확장하려면 API Route와 DB 스키마를 추가하면 됩니다.
