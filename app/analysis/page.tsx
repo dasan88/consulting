@@ -2,6 +2,22 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import * as RadixTooltip from "@radix-ui/react-tooltip";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { normalizePhone, parseDate } from "@/lib/record-utils";
 import { CounselingInput, CounselingRecord } from "@/lib/types";
 import { useRecords } from "@/lib/use-records";
@@ -121,6 +137,61 @@ const GYEONGGI_KEYWORDS = [
   "의정부",
 ];
 const LOCAL_CAMPUS_KEYWORDS = ["세종캠퍼스", "고려세종", "미래캠퍼스", "연세미래", "원주", "천안", "아산"];
+const CHART_COLORS = ["#0d63d6", "#4f93e0", "#14a392", "#f08a24", "#8b5cf6", "#ec4899", "#64748b"];
+const motionUp = {
+  hidden: { opacity: 0, y: 18 },
+  show: (index = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.42, delay: index * 0.05 },
+  }),
+};
+
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <RadixTooltip.Provider delayDuration={120}>
+      <RadixTooltip.Root>
+        <RadixTooltip.Trigger asChild>
+          <button type="button" className="analysis-info-dot" aria-label="설명 보기">
+            i
+          </button>
+        </RadixTooltip.Trigger>
+        <RadixTooltip.Portal>
+          <RadixTooltip.Content side="top" sideOffset={8} className="analysis-tooltip-content">
+            {text}
+            <RadixTooltip.Arrow className="analysis-tooltip-arrow" />
+          </RadixTooltip.Content>
+        </RadixTooltip.Portal>
+      </RadixTooltip.Root>
+    </RadixTooltip.Provider>
+  );
+}
+
+function ChartTooltipContent({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number; color?: string; payload?: Record<string, unknown> }>;
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="chart-tooltip">
+      {label ? <p className="chart-tooltip-label">{label}</p> : null}
+      {payload.map((item, index) => (
+        <div key={`${item.name ?? "value"}-${index}`} className="chart-tooltip-row">
+          <span className="chart-tooltip-key">
+            <i style={{ background: item.color ?? CHART_COLORS[index % CHART_COLORS.length] }} />
+            {item.name ?? "값"}
+          </span>
+          <strong>{item.value ?? 0}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function toPercent(numerator: number, denominator: number): number {
   if (denominator === 0) return 0;
@@ -351,6 +422,11 @@ export default function AnalysisPage() {
   const [compareEndDate, setCompareEndDate] = useState<string>("");
   const [sourceFilter, setSourceFilter] = useState<"all" | CounselingInput["visit_source"]>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | CounselingInput["status"]>("all");
+  const [chartsReady, setChartsReady] = useState(false);
+
+  useEffect(() => {
+    setChartsReady(true);
+  }, []);
 
   useEffect(() => {
     if (!quarterOptions.length) {
@@ -812,13 +888,8 @@ export default function AnalysisPage() {
     };
   }, [filteredRecords]);
 
-  const maxSource = Math.max(1, ...data.sourceCounts.map((x) => x.value));
-  const maxMonth = Math.max(1, ...data.monthRows.map((x) => x.value));
-  const maxRegion = Math.max(1, ...data.regionRows.map((x) => x.value));
-  const maxAgeDist = Math.max(1, ...data.ageDist.map((x) => x.value));
   const maxMajor = Math.max(1, ...data.majorFamilyRows.map((x) => x.value));
   const maxPrep = Math.max(1, ...data.prepRows.map((x) => x.count));
-  const maxQuestion = Math.max(1, ...data.questionCategoryRows.map((x) => x.value));
   const maxIdealBySource = Math.max(1, ...advanced.idealBySource.map((x) => x.idealCount));
   const totalWeekdayCount = advanced.weekdayEfficiency.reduce((sum, item) => sum + item.total, 0);
   const maxWeekdayCount = Math.max(1, ...advanced.weekdayEfficiency.map((item) => item.total));
@@ -863,6 +934,44 @@ export default function AnalysisPage() {
   };
 
   const isTopMetric = (value: number, maxValue: number) => value > 0 && value === maxValue;
+  const topAgeGroup = [...data.ageDist].sort((a, b) => b.value - a.value)[0] ?? null;
+  const topQuestion = data.questionCategoryRows[0] ?? null;
+  const topPrepBucket = [...data.prepRows].sort((a, b) => b.count - a.count)[0] ?? null;
+  const sourceChartData = data.sourceCounts.map((row, index) => ({
+    name: row.source,
+    상담건수: row.value,
+    비중: toPercent(row.value, data.total),
+    fill: CHART_COLORS[index % CHART_COLORS.length],
+  }));
+  const regionChartData = data.regionRows.map((row, index) => ({
+    name: row.region,
+    value: row.value,
+    share: toPercent(row.value, data.total),
+    fill: CHART_COLORS[index % CHART_COLORS.length],
+  }));
+  const ageChartData = data.ageDist.map((row, index) => ({
+    name: row.bucket,
+    인원: row.value,
+    fill: CHART_COLORS[index % CHART_COLORS.length],
+  }));
+  const questionChartData = data.questionCategoryRows.slice(0, 5).map((row, index) => ({
+    name: row.category,
+    건수: row.value,
+    fill: CHART_COLORS[index % CHART_COLORS.length],
+  }));
+  const monthChartData = data.monthRows.map((row) => ({
+    name: row.label,
+    상담건수: row.value,
+  }));
+  const activeFilterBadges = [
+    periodPreset === "all"
+      ? "전체 기간"
+      : periodPreset === "custom"
+        ? `직접 지정 ${startDate || "-"} ~ ${endDate || "-"}`
+        : quarterOptions.find((q) => q.key === periodPreset)?.label ?? "기간 선택",
+    sourceFilter === "all" ? "방문경로 전체" : `방문경로 ${sourceFilter}`,
+    statusFilter === "all" ? "상황 전체" : `상황 ${statusFilter}`,
+  ];
 
   function exportPdf() {
     const currentTitle = document.title;
@@ -876,12 +985,61 @@ export default function AnalysisPage() {
 
   return (
     <main className="analysis-page">
-      <h1>상담 분석 (신규 설계)</h1>
-      <p className="subtle">데이터 기간: {dateRangeLabel(filteredRecords)}</p>
-      <div className="page-switch page-switch-row no-print">
-        <Link href="/intake" className="switch-btn">입력 페이지로 이동</Link>
-        <button type="button" className="switch-btn switch-btn-secondary" onClick={exportPdf}>PDF 저장</button>
-      </div>
+      <motion.section
+        className="analysis-hero-board no-print"
+        initial="hidden"
+        animate="show"
+        variants={motionUp}
+      >
+        <div className="analysis-hero-copy">
+          <p className="analysis-eyebrow">Consulting Intelligence Board</p>
+          <h1>입문 상담 분석 리포트</h1>
+          <p className="subtle">데이터 기간: {dateRangeLabel(filteredRecords)}</p>
+          <div className="analysis-hero-badges">
+            {activeFilterBadges.map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+          <div className="page-switch page-switch-row">
+            <Link href="/intake" className="switch-btn">입력 페이지로 이동</Link>
+            <button type="button" className="switch-btn switch-btn-secondary" onClick={exportPdf}>PDF 저장</button>
+          </div>
+        </div>
+        <div className="analysis-hero-brief">
+          <motion.article className="analysis-brief-card emphasis" variants={motionUp} custom={1} initial="hidden" animate="show">
+            <div className="hero-card-head">
+              <span>핵심 채널</span>
+              <InfoTooltip text="현재 필터 기준에서 가장 많은 상담을 만든 유입 경로입니다." />
+            </div>
+            <strong>{advanced.topChannel ? advanced.topChannel.source : "-"}</strong>
+            <p>{advanced.topChannel ? `${advanced.topChannel.total}건 · ${advanced.topChannel.share}%` : "데이터 없음"}</p>
+          </motion.article>
+          <motion.article className="analysis-brief-card" variants={motionUp} custom={2} initial="hidden" animate="show">
+            <div className="hero-card-head">
+              <span>가장 많은 연령대</span>
+              <InfoTooltip text="현재 조회 조건에서 가장 많이 분포한 연령대입니다." />
+            </div>
+            <strong>{topAgeGroup ? topAgeGroup.bucket : "-"}</strong>
+            <p>{topAgeGroup ? `${topAgeGroup.value}건` : "데이터 없음"}</p>
+          </motion.article>
+          <motion.article className="analysis-brief-card" variants={motionUp} custom={3} initial="hidden" animate="show">
+            <div className="hero-card-head">
+              <span>대표 관심사</span>
+              <InfoTooltip text="상담 내용에서 가장 자주 언급된 문의 카테고리입니다." />
+            </div>
+            <strong>{topQuestion ? topQuestion.category : "-"}</strong>
+            <p>{topQuestion ? `${topQuestion.value}건` : "데이터 없음"}</p>
+          </motion.article>
+          <motion.article className="analysis-brief-card" variants={motionUp} custom={4} initial="hidden" animate="show">
+            <div className="hero-card-head">
+              <span>준비기간 집중</span>
+              <InfoTooltip text="현재 필터 내에서 가장 많이 잡힌 준비가능기간 구간입니다." />
+            </div>
+            <strong>{topPrepBucket ? topPrepBucket.value : "-"}</strong>
+            <p>{topPrepBucket ? `${topPrepBucket.count}건` : "데이터 없음"}</p>
+          </motion.article>
+        </div>
+      </motion.section>
 
       <section className="analysis-section no-print">
         <h2>필터</h2>
@@ -1134,6 +1292,15 @@ export default function AnalysisPage() {
         <div className="analytics-grid">
           <article className="chart-card">
             <h3>채널 핵심지표 요약</h3>
+            <div className="metric-strip">
+              {advanced.channelComposite.slice(0, 3).map((row, index) => (
+                <div key={row.source} className={`metric-strip-card ${index === 0 ? "primary" : ""}`}>
+                  <span>{index === 0 ? "주력 채널" : `상위 ${index + 1}위`}</span>
+                  <strong>{row.source}</strong>
+                  <p>{row.total}건 · 비중 {row.share}%</p>
+                </div>
+              ))}
+            </div>
             <div className="table-wrap equal-height-insight-table">
               <table>
                 <thead><tr><th>채널</th><th>상담 건</th><th>비중</th><th>영어</th><th>2년+</th><th>이공계</th></tr></thead>
@@ -1225,29 +1392,28 @@ export default function AnalysisPage() {
       <section className="analysis-section">
         <h2>방문경로 분석</h2>
         <div className="analytics-grid">
-          <article className="chart-card source-efficiency-card">
+          <motion.article className="chart-card source-efficiency-card" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionUp}>
             <div className="weekday-card-head">
               <h3>방문경로별 상담 건수</h3>
             </div>
-            <div className="weekday-efficiency-bars">
-              {data.sourceCounts.map((row) => {
-                const isTop = isTopMetric(row.value, maxSource);
-                const share = toPercent(row.value, data.total);
-                const width = row.value === 0 ? 0 : Math.max(14, Math.round((row.value / maxSource) * 100));
-                return (
-                <div key={row.source} className={`weekday-efficiency-row ${isTop ? "is-peak" : ""}`}>
-                  <div className="weekday-efficiency-label">{row.source}</div>
-                  <div className="weekday-efficiency-track">
-                    <div className={`weekday-efficiency-fill ${isTop ? "peak" : ""}`} style={{ width: `${width}%` }} />
-                  </div>
-                  <div className="weekday-efficiency-meta">
-                    <strong>{row.value}건</strong>
-                    <span>{share}%</span>
-                  </div>
-                </div>
-              )})}
+            <div className="chart-frame chart-frame-tall">
+              {chartsReady ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={sourceChartData} layout="vertical" margin={{ top: 6, right: 8, left: 10, bottom: 6 }}>
+                    <CartesianGrid stroke="#e5eef9" strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" hide />
+                    <YAxis type="category" dataKey="name" width={76} tick={{ fill: "#36567e", fontSize: 13, fontWeight: 800 }} axisLine={false} tickLine={false} />
+                    <RechartsTooltip cursor={{ fill: "rgba(13, 99, 214, 0.06)" }} content={<ChartTooltipContent />} />
+                    <Bar dataKey="상담건수" radius={[0, 10, 10, 0]}>
+                      {sourceChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <div className="chart-placeholder">차트 로딩 중</div>}
             </div>
-          </article>
+          </motion.article>
           <article className="chart-card weekday-efficiency-card">
             <div className="weekday-card-head">
               <h3>요일별 방문자 통계</h3>
@@ -1305,19 +1471,31 @@ export default function AnalysisPage() {
       <section className="analysis-section">
         <h2>지역 분석</h2>
         <div className="analytics-grid">
-          <article className="chart-card">
+          <motion.article className="chart-card" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionUp}>
             <h3>지역별 상담 비율</h3>
-            <div className="bar-list">
-              {data.regionRows.map((row) => {
-                const isTop = isTopMetric(row.value, maxRegion);
-                return (
-                <div key={row.region} className={`bar-item ${isTop ? "is-top" : ""}`}>
-                  <div className="bar-head"><span>{row.region}</span><strong>{toPercent(row.value, data.total)}%</strong></div>
-                  <div className="bar-track"><div className={`bar-fill ${isTop ? "top" : ""}`} style={{ width: `${(row.value / maxRegion) * 100}%` }} /></div>
-                </div>
-              )})}
+            <div className="chart-frame chart-frame-donut">
+              {chartsReady ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={regionChartData} dataKey="value" nameKey="name" innerRadius={72} outerRadius={108} paddingAngle={3}>
+                      {regionChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip content={<ChartTooltipContent />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : <div className="chart-placeholder">차트 로딩 중</div>}
             </div>
-          </article>
+            <div className="chart-legend-grid">
+              {regionChartData.map((row) => (
+                <div key={row.name} className="chart-legend-item">
+                  <span><i style={{ background: row.fill }} />{row.name}</span>
+                  <strong>{row.share}%</strong>
+                </div>
+              ))}
+            </div>
+          </motion.article>
           <article className="chart-card region-split-section">
             <h3>수도권 vs 지방</h3>
             <div className="region-split-grid">
@@ -1346,19 +1524,26 @@ export default function AnalysisPage() {
       <section className="analysis-section demographic-section">
         <h2>연령 / 성별 구조별 분포</h2>
         <div className="analytics-grid">
-          <article className="chart-card">
+          <motion.article className="chart-card" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionUp}>
             <h3>연령대 분포</h3>
-            <div className="bar-list">
-              {data.ageDist.map((row) => {
-                const isTop = isTopMetric(row.value, maxAgeDist);
-                return (
-                <div key={row.bucket} className={`bar-item ${isTop ? "is-top" : ""}`}>
-                  <div className="bar-head"><span>{row.bucket}</span><strong>{row.value}건</strong></div>
-                  <div className="bar-track"><div className={`bar-fill ${isTop ? "top" : ""}`} style={{ width: `${(row.value / maxAgeDist) * 100}%` }} /></div>
-                </div>
-              )})}
+            <div className="chart-frame chart-frame-mid">
+              {chartsReady ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={ageChartData} margin={{ top: 10, right: 8, left: 4, bottom: 4 }}>
+                    <CartesianGrid stroke="#e5eef9" strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fill: "#36567e", fontSize: 13, fontWeight: 800 }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fill: "#6a83a5", fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <RechartsTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="인원" radius={[10, 10, 0, 0]}>
+                      {ageChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <div className="chart-placeholder">차트 로딩 중</div>}
             </div>
-          </article>
+          </motion.article>
           <article className="chart-card">
             <h3>연령대 × 준비가능기간</h3>
             <div className="table-wrap demographic-table">
@@ -1461,6 +1646,15 @@ export default function AnalysisPage() {
           </article>
           <article className="chart-card">
             <h3>대학별 상담 건수</h3>
+            <div className="metric-strip">
+              {data.universityRows.slice(0, 3).map((row, index) => (
+                <div key={row.university} className={`metric-strip-card ${index === 0 ? "primary" : ""}`}>
+                  <span>{index === 0 ? "상위 대학" : `상위 ${index + 1}위`}</span>
+                  <strong>{row.university}</strong>
+                  <p>{row.total}건</p>
+                </div>
+              ))}
+            </div>
             <div className="table-wrap tall-table">
               <table>
                 <thead><tr><th>대학교</th><th>상담 건</th></tr></thead>
@@ -1534,22 +1728,28 @@ export default function AnalysisPage() {
           </article>
           <article className="chart-card">
             <h3>전공 × 성별 × 준비가능기간</h3>
-            <div className="table-wrap">
-              <table>
-                <thead><tr><th>세부 전공</th><th>성별</th><th>준비가능기간</th><th>건수</th><th>비율</th></tr></thead>
-                <tbody>
-                  {data.majorGenderPrepRows.slice(0, 10).map((row) => (
-                    <tr key={`${row.major}-${row.gender}-${row.prep}`}>
-                      <td>{row.major}</td>
-                      <td>{row.gender}</td>
-                      <td>{row.prep}</td>
-                      <td>{row.count}</td>
-                      <td>{row.share}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="combo-card-grid">
+              {data.majorGenderPrepRows.slice(0, 8).map((row, index) => (
+                <article key={`${row.major}-${row.gender}-${row.prep}`} className={`combo-card ${index === 0 ? "featured" : ""}`}>
+                  <div className="combo-card-rank">#{index + 1}</div>
+                  <div className="combo-card-top">
+                    <h4>{row.major}</h4>
+                    <div className="combo-card-meta">
+                      <span>{row.gender}</span>
+                      <span>{row.prep}</span>
+                    </div>
+                  </div>
+                  <div className="combo-card-value">
+                    <strong>{row.count}건</strong>
+                    <span>{row.share}%</span>
+                  </div>
+                  <div className="combo-card-track">
+                    <span style={{ width: `${Math.max(row.share, 8)}%` }} />
+                  </div>
+                </article>
+              ))}
             </div>
+            <p className="subtle" style={{ marginTop: 10 }}>상위 8개 조합 기준</p>
           </article>
           <article className="chart-card">
             <h3>준비가능기간 분포</h3>
@@ -1596,42 +1796,48 @@ export default function AnalysisPage() {
               )})}
             </div>
           </article>
-          <article className="chart-card">
+          <motion.article className="chart-card" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionUp}>
             <h3>상담 관심사 Top 5</h3>
-            <div className="bar-list">
-              {data.questionCategoryRows.slice(0, 5).map((row) => {
-                const isTop = isTopMetric(row.value, maxQuestion);
-                return (
-                <div key={row.category} className={`bar-item ${isTop ? "is-top" : ""}`}>
-                  <div className="bar-head"><span>{row.category}</span><strong>{row.value}건</strong></div>
-                  <div className="bar-track"><div className={`bar-fill ${isTop ? "top" : ""}`} style={{ width: `${(row.value / maxQuestion) * 100}%` }} /></div>
-                </div>
-              )})}
+            <div className="chart-frame chart-frame-tall">
+              {chartsReady ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={questionChartData} layout="vertical" margin={{ top: 6, right: 8, left: 18, bottom: 6 }}>
+                    <CartesianGrid stroke="#e5eef9" strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" hide />
+                    <YAxis type="category" dataKey="name" width={108} tick={{ fill: "#36567e", fontSize: 12, fontWeight: 800 }} axisLine={false} tickLine={false} />
+                    <RechartsTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="건수" radius={[0, 10, 10, 0]}>
+                      {questionChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <div className="chart-placeholder">차트 로딩 중</div>}
             </div>
-          </article>
-          <article className="chart-card">
+          </motion.article>
+          <motion.article className="chart-card" initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }} variants={motionUp}>
             <h3>월별 상담 건수 추이</h3>
-            <div className="bar-list">
-              {data.monthRows.map((row) => {
-                const isTop = isTopMetric(row.value, maxMonth);
-                return (
-                <div key={row.label} className={`bar-item ${isTop ? "is-top" : ""}`}>
-                  <div className="bar-head"><span>{row.label}</span><strong>{row.value}건</strong></div>
-                  <div className="bar-track"><div className={`bar-fill alt ${isTop ? "top" : ""}`} style={{ width: `${(row.value / maxMonth) * 100}%` }} /></div>
-                </div>
-              )})}
+            <div className="chart-frame chart-frame-mid">
+              {chartsReady ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={monthChartData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="monthAreaFill" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="#0d63d6" stopOpacity={0.28} />
+                        <stop offset="100%" stopColor="#0d63d6" stopOpacity={0.04} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="#e5eef9" strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fill: "#36567e", fontSize: 12, fontWeight: 800 }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fill: "#6a83a5", fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <RechartsTooltip content={<ChartTooltipContent />} />
+                    <Area type="monotone" dataKey="상담건수" stroke="#0d63d6" strokeWidth={3} fill="url(#monthAreaFill)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : <div className="chart-placeholder">차트 로딩 중</div>}
             </div>
-          </article>
-        </div>
-      </section>
-
-      <section className="analysis-section aligned-section">
-        <h2>11) 최상위 합격 후보군</h2>
-        <div className="grid">
-          <div className="mini-block">
-            <h4>후보군 정의</h4>
-            <p className="subtle">{IDEAL_CANDIDATE_RULE}</p>
-          </div>
+          </motion.article>
         </div>
       </section>
 
