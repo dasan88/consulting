@@ -2798,7 +2798,7 @@ th {
 .analysis-page .combo-card h4 {
   margin: 0;
   color: #173d70;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.15;
 }
 
@@ -2830,9 +2830,14 @@ th {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.74);
   color: #32547f;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   padding: 3px 7px;
+}
+
+.analysis-page .combo-card-meta .combo-chip-prep {
+  font-size: 12px;
+  padding: 4px 8px;
 }
 
 .analysis-page .combo-card-value {

@@ -1735,8 +1735,8 @@ export default function AnalysisPage() {
                   <div className="combo-card-top">
                     <h4>{row.major}</h4>
                     <div className="combo-card-meta">
-                      <span>{row.gender}</span>
-                      <span>{row.prep}</span>
+                      <span className="combo-chip combo-chip-gender">{row.gender}</span>
+                      <span className="combo-chip combo-chip-prep">{row.prep}</span>
                     </div>
                   </div>
                   <div className="combo-card-value">
