@@ -18,6 +18,10 @@ type PrepBucket = (typeof PREP_BUCKETS)[number];
 
 const MAJOR_FAMILIES = ["공대", "자연대", "비이공계", "기타"] as const;
 type MajorFamily = (typeof MAJOR_FAMILIES)[number];
+const STEM_MAJOR_LABELS = {
+  engineering: ["전자/전기", "기계", "건축", "컴퓨터/소프트웨어", "데이터/AI", "산업공학", "토목/환경", "신소재/재료", "반도체", "항공/조선"],
+  science: ["화학", "바이오", "수학/통계", "물리", "지구/환경과학"],
+} as const;
 
 const QUESTION_CATEGORIES = ["시험 난이도", "합격 가능성", "비용", "준비기간", "병행 가능 여부", "커리큘럼", "기타"] as const;
 type QuestionCategory = (typeof QUESTION_CATEGORIES)[number];
@@ -330,8 +334,10 @@ function metricSnapshot(rows: CounselingRecord[]) {
     }).length,
     total
   );
+  const engineeringRate = toPercent(rows.filter((r) => majorFamily(r.major) === "공대").length, total);
+  const scienceRate = toPercent(rows.filter((r) => majorFamily(r.major) === "자연대").length, total);
 
-  return { total, age20to25Rate, age25to29Rate, prep2yRate, stemRate };
+  return { total, age20to25Rate, age25to29Rate, prep2yRate, stemRate, engineeringRate, scienceRate };
 }
 
 export default function AnalysisPage() {
@@ -540,6 +546,18 @@ export default function AnalysisPage() {
       .map(([university, list]) => ({ university, total: list.length }))
       .sort((a, b) => b.total - a.total);
 
+    const majorMap = new Map<string, CounselingRecord[]>();
+    filteredRecords.forEach((r) => {
+      const key = r.major.trim() || "미입력";
+      const list = majorMap.get(key) ?? [];
+      list.push(r);
+      majorMap.set(key, list);
+    });
+
+    const topMajorRows = [...majorMap.entries()]
+      .map(([major, list]) => ({ major, total: list.length }))
+      .sort((a, b) => b.total - a.total);
+
     const top3Concentration = toPercent(
       universityRows.slice(0, 3).reduce((acc, row) => acc + row.total, 0),
       total
@@ -570,14 +588,18 @@ export default function AnalysisPage() {
       row: PREP_BUCKETS.map((b) => filteredRecords.filter((r) => majorFamily(r.major) === family && prepBucket(r.prep_period) === b).length),
     }));
 
-    const majorEnglish = MAJOR_FAMILIES.map((family) => {
-      const group = filteredRecords.filter((r) => majorFamily(r.major) === family);
-      return {
-        family,
-        total: group.length,
-        rate: toPercent(group.filter((r) => Boolean(r.english_level)).length, group.length),
-      };
+    const majorGenderPrepMap = new Map<string, { major: string; gender: CounselingInput["gender"]; prep: PrepBucket; count: number }>();
+    filteredRecords.forEach((r) => {
+      const major = r.major.trim() || "미입력";
+      const prep = prepBucket(r.prep_period);
+      const key = `${major}__${r.gender}__${prep}`;
+      const item = majorGenderPrepMap.get(key) ?? { major, gender: r.gender, prep, count: 0 };
+      item.count += 1;
+      majorGenderPrepMap.set(key, item);
     });
+    const majorGenderPrepRows = [...majorGenderPrepMap.values()]
+      .sort((a, b) => b.count - a.count)
+      .map((row) => ({ ...row, share: toPercent(row.count, total) }));
 
     const prepRows = PREP_BUCKETS.map((bucket) => ({ value: bucket, count: filteredRecords.filter((r) => prepBucket(r.prep_period) === bucket).length }));
 
@@ -650,11 +672,12 @@ export default function AnalysisPage() {
       univTypedTotal,
       top3Concentration,
       universityRows,
+      topMajorRows,
       gradeRows,
       majorFamilyRows,
       stemCount,
       majorPrep,
-      majorEnglish,
+      majorGenderPrepRows,
       prepRows,
       minuteRows,
       weekdayRows,
@@ -689,6 +712,8 @@ export default function AnalysisPage() {
         age25to29Delta: null as number | null,
         prep2yDelta: null as number | null,
         stemDelta: null as number | null,
+        engineeringDelta: null as number | null,
+        scienceDelta: null as number | null,
       };
     }
 
@@ -698,6 +723,8 @@ export default function AnalysisPage() {
       age25to29Delta: currentSnapshot.age25to29Rate - previousSnapshot.age25to29Rate,
       prep2yDelta: currentSnapshot.prep2yRate - previousSnapshot.prep2yRate,
       stemDelta: currentSnapshot.stemRate - previousSnapshot.stemRate,
+      engineeringDelta: currentSnapshot.engineeringRate - previousSnapshot.engineeringRate,
+      scienceDelta: currentSnapshot.scienceRate - previousSnapshot.scienceRate,
     };
   }, [currentSnapshot, previousSnapshot, hasPreviousWindow]);
 
@@ -798,6 +825,7 @@ export default function AnalysisPage() {
   const maxGenderAgeCombo = Math.max(1, ...data.genderAgeDetailRows.map((x) => x.count));
   const maxUnivType = Math.max(1, ...data.univTypeRows.map((x) => x.value));
   const maxGrade = Math.max(1, ...data.gradeRows.map((x) => x.value));
+  const maxTopMajor = Math.max(1, ...data.topMajorRows.map((x) => x.total));
   const maxMinute = Math.max(1, ...data.minuteRows.map((x) => x.value));
   const maxWeekdayRows = Math.max(1, ...data.weekdayRows.map((x) => x.value));
 
@@ -1061,7 +1089,7 @@ export default function AnalysisPage() {
           </div>
         </div>
         <p className="subtle" style={{ marginBottom: 10 }}>{comparisonLabel}</p>
-        <div className="grid grid-4">
+        <div className="grid grid-5">
           <div className="mini-block">
             <h4>상담 건수 변화</h4>
             <p className="insight-value">{currentSnapshot.total}</p>
@@ -1081,10 +1109,22 @@ export default function AnalysisPage() {
             <p className="subtle">{deltaLabel(changeSignals.age25to29Delta, "%p")}</p>
           </div>
           <div className="mini-block">
-            <h4>이공계 비율 변화</h4>
-            <p className="insight-value">{currentSnapshot.stemRate}%</p>
-            <span className={`delta-pill ${deltaTone(changeSignals.stemDelta)}`}>{deltaBadgeText(changeSignals.stemDelta, "%p")}</span>
-            <p className="subtle">{deltaLabel(changeSignals.stemDelta, "%p")}</p>
+            <h4>공대 비율 변화</h4>
+            <p className="insight-value">{currentSnapshot.engineeringRate}%</p>
+            <span className={`delta-pill ${deltaTone(changeSignals.engineeringDelta)}`}>{deltaBadgeText(changeSignals.engineeringDelta, "%p")}</span>
+            <p className="subtle">{deltaLabel(changeSignals.engineeringDelta, "%p")}</p>
+            <div className="stem-major-note">
+              <p>{STEM_MAJOR_LABELS.engineering.join(", ")}</p>
+            </div>
+          </div>
+          <div className="mini-block">
+            <h4>자연대 비율 변화</h4>
+            <p className="insight-value">{currentSnapshot.scienceRate}%</p>
+            <span className={`delta-pill ${deltaTone(changeSignals.scienceDelta)}`}>{deltaBadgeText(changeSignals.scienceDelta, "%p")}</span>
+            <p className="subtle">{deltaLabel(changeSignals.scienceDelta, "%p")}</p>
+            <div className="stem-major-note">
+              <p>{STEM_MAJOR_LABELS.science.join(", ")}</p>
+            </div>
           </div>
         </div>
       </section>
@@ -1446,11 +1486,25 @@ export default function AnalysisPage() {
               )})}
             </div>
           </article>
+          <article className="chart-card">
+            <h3>상위 전공별 상담 건수</h3>
+            <div className="bar-list">
+              {data.topMajorRows.slice(0, 10).map((row) => {
+                const isTop = isTopMetric(row.total, maxTopMajor);
+                return (
+                <div key={row.major} className={`bar-item ${isTop ? "is-top" : ""}`}>
+                  <div className="bar-head"><span>{row.major}</span><strong>{toPercent(row.total, data.total)}% ({row.total}건)</strong></div>
+                  <div className="bar-track"><div className={`bar-fill ${isTop ? "top" : ""}`} style={{ width: `${(row.total / maxTopMajor) * 100}%` }} /></div>
+                </div>
+              )})}
+            </div>
+            <p className="subtle" style={{ marginTop: 8 }}>상위 10개 전공 기준</p>
+          </article>
         </div>
       </section>
 
       <section className="analysis-section aligned-section">
-        <h2>전공 / 준비기간 / 영어</h2>
+        <h2>전공 / 준비기간 분석</h2>
         <div className="analytics-grid">
           <article className="chart-card">
             <h3>전공 계열 비율</h3>
@@ -1479,13 +1533,19 @@ export default function AnalysisPage() {
             </div>
           </article>
           <article className="chart-card">
-            <h3>전공 × 영어성적 보유율</h3>
+            <h3>전공 × 성별 × 준비가능기간</h3>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>전공 계열</th><th>상담 건</th><th>보유율</th></tr></thead>
+                <thead><tr><th>세부 전공</th><th>성별</th><th>준비가능기간</th><th>건수</th><th>비율</th></tr></thead>
                 <tbody>
-                  {data.majorEnglish.map((row) => (
-                    <tr key={row.family}><td>{row.family}</td><td>{row.total}</td><td>{row.rate}%</td></tr>
+                  {data.majorGenderPrepRows.slice(0, 10).map((row) => (
+                    <tr key={`${row.major}-${row.gender}-${row.prep}`}>
+                      <td>{row.major}</td>
+                      <td>{row.gender}</td>
+                      <td>{row.prep}</td>
+                      <td>{row.count}</td>
+                      <td>{row.share}%</td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -1511,7 +1571,7 @@ export default function AnalysisPage() {
         <h2>상담시간 / 궁금한 점 분석</h2>
         <div className="analytics-grid">
           <article className="chart-card">
-            <h3>시간대별 상담 건수</h3>
+            <h3>상담 소요 시간</h3>
             <div className="bar-list">
               {data.minuteRows.map((row) => {
                 const isTop = isTopMetric(row.value, maxMinute);
